@@ -23,6 +23,8 @@ enum LoadStatus {
 model Shipper {
   id            String   @id @default(uuid())
   contactPerson String
+  contactPhone  String?
+  contactEmail  String?
   company       String
   loads         Load[]
   createdAt     DateTime @default(now())
