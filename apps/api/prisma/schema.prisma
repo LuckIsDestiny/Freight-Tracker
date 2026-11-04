@@ -32,12 +32,15 @@ model Shipper {
 }
 
 model Carrier {
-  id        String   @id @default(uuid())
-  mcNumber  String   @unique
-  name      String
-  loads     Load[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  mcNumber      String   @unique
+  name          String
+  contactPerson String
+  contactPhone  String
+  contactEmail  String?
+  loads         Load[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Load {

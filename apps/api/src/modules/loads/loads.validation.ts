@@ -5,9 +5,9 @@ export const createLoadSchema = z.object({
   origin: z.string().trim().min(2),
   destination: z.string().trim().min(2),
   shipperId: z.uuid(),
-  carrierId: z.uuid().optional(),
-  estimatedPickupDate: z.string().pipe(z.coerce.date()).optional(),
-  estimatedDeliveryDate: z.string().pipe(z.coerce.date()).optional(),
+  carrierId: z.uuid().nullish(),
+  estimatedPickupDate: z.string().pipe(z.coerce.date()).nullish(),
+  estimatedDeliveryDate: z.string().pipe(z.coerce.date()).nullish(),
 });
 
 export const updateLoadSchema = createLoadSchema
@@ -18,12 +18,11 @@ export const updateLoadStatusSchema = z.object({
   status: z.enum(LoadStatus),
 });
 
-export const idParamSchema = z.object({
-  loadId: z.uuid().optional(),
-  shipperId: z.uuid().optional(),
+export const loadIdParamSchema = z.object({
+  loadId: z.uuid(),
 });
 
 export type CreateLoadSchema = z.infer<typeof createLoadSchema>;
 export type UpdateLoadSchema = z.infer<typeof updateLoadSchema>;
 export type UpdateLoadStatusSchema = z.infer<typeof updateLoadStatusSchema>;
-export type IdParamSchema = z.infer<typeof idParamSchema>;
+export type LoadIdParamSchema = z.infer<typeof loadIdParamSchema>;

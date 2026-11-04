@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import * as loadService from "./loads.service.js";
 import type {
   CreateLoadSchema,
-  IdParamSchema,
+  LoadIdParamSchema,
   UpdateLoadSchema,
   UpdateLoadStatusSchema,
 } from "./loads.validation.js";
@@ -13,7 +13,7 @@ export const getLoads = async (req: Request, res: Response) => {
   res.status(200).json({ success: true, data: loads });
 };
 export const getLoadById = async (req: Request, res: Response) => {
-  const { loadId } = req.params as IdParamSchema;
+  const { loadId } = req.params as LoadIdParamSchema;
   if (!loadId) {
     throw new AppError("Load Id required", 400);
   }
@@ -28,7 +28,7 @@ export const createLoad = async (req: Request, res: Response) => {
 };
 
 export const updateLoad = async (req: Request, res: Response) => {
-  const { loadId } = req.params as IdParamSchema;
+  const { loadId } = req.params as LoadIdParamSchema;
   if (!loadId) {
     throw new AppError("Load Id required", 400);
   }
@@ -38,7 +38,7 @@ export const updateLoad = async (req: Request, res: Response) => {
 };
 
 export const updateLoadStatus = async (req: Request, res: Response) => {
-  const { loadId } = req.params as IdParamSchema;
+  const { loadId } = req.params as LoadIdParamSchema;
   if (!loadId) {
     throw new AppError("Load Id required", 400);
   }

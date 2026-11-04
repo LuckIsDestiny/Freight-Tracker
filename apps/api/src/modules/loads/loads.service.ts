@@ -1,6 +1,7 @@
-import { Prisma } from "../../generated/prisma/client.js";
+import { LoadStatus, Prisma } from "../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../utils/AppError.js";
+import { buildUpdatePayload } from "../../utils/buildUpdatePayload.js";
 import type {
   CreateLoadSchema,
   UpdateLoadSchema,
@@ -8,11 +9,27 @@ import type {
 } from "./loads.validation.js";
 
 export const getLoads = async () => {
-  return prisma.load.findMany({ orderBy: { createdAt: "desc" } });
+  return prisma.load.findMany({
+    include: {
+      shipper: { select: { company: true } },
+      carrier: { select: { name: true } },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
 };
 
 export const getLoadById = async (loadId: string) => {
-  return prisma.load.findUnique({ where: { id: loadId } });
+  const load = await prisma.load.findUnique({
+    where: { id: loadId },
+    include: {
+      shipper: { select: { company: true } },
+      carrier: { select: { name: true } },
+    },
+  });
+  if (!load) {
+    throw new AppError("Load not found", 404);
+  }
+  return load;
 };
 
 export const createLoad = async (data: CreateLoadSchema) => {
@@ -30,25 +47,18 @@ export const createLoad = async (data: CreateLoadSchema) => {
 
 export const updateLoad = async (loadId: string, data: UpdateLoadSchema) => {
   const updatePayload: Prisma.LoadUncheckedUpdateInput = {};
-  if (data.origin !== undefined) {
-    updatePayload.origin = data.origin;
-  }
-  if (data.destination !== undefined) {
-    updatePayload.destination = data.destination;
-  }
-  if (data.carrierId !== undefined) {
-    updatePayload.carrierId = data.carrierId;
-  }
-  if (data.estimatedPickupDate !== undefined) {
-    updatePayload.estimatedPickupDate = data.estimatedPickupDate;
-  }
-  if (data.estimatedDeliveryDate !== undefined) {
-    updatePayload.estimatedDeliveryDate = data.estimatedDeliveryDate;
-  }
   return prisma.load.update({
     where: { id: loadId },
-    data: updatePayload,
+    data: buildUpdatePayload(updatePayload, data),
   });
+};
+
+export const transitionStatus: Record<LoadStatus, LoadStatus[]> = {
+  [LoadStatus.QUOTED]: [LoadStatus.BOOKED, LoadStatus.CANCELED],
+  [LoadStatus.BOOKED]: [LoadStatus.IN_TRANSIT, LoadStatus.CANCELED],
+  [LoadStatus.IN_TRANSIT]: [LoadStatus.DELIVERED],
+  [LoadStatus.DELIVERED]: [],
+  [LoadStatus.CANCELED]: [],
 };
 
 export const updateLoadStatus = async (
@@ -65,31 +75,19 @@ export const updateLoadStatus = async (
   const currStatus = loadStatus.status;
   const newStatus = data.status;
   const updatePayload: Prisma.LoadUncheckedUpdateInput = {};
-
-  if (currStatus === "QUOTED") {
-    if (newStatus === "BOOKED" || newStatus === "CANCELED") {
-      updatePayload.status = newStatus;
-    } else {
-      throw new AppError("Wrong status input", 409);
-    }
-  } else if (currStatus === "BOOKED") {
-    if (newStatus === "IN_TRANSIT") {
-      updatePayload.status = newStatus;
-      updatePayload.pickedUpAt = new Date();
-    } else if (newStatus === "CANCELED") {
-      updatePayload.status = newStatus;
-    } else {
-      throw new AppError("Wrong status input", 409);
-    }
-  } else if (currStatus === "IN_TRANSIT") {
-    if (newStatus === "DELIVERED") {
-      updatePayload.status = newStatus;
-      updatePayload.deliveredAt = new Date();
-    } else {
-      throw new AppError("Wrong status input", 409);
-    }
-  } else if (currStatus === "CANCELED" || currStatus === "DELIVERED") {
-    throw new AppError("Wrong status input", 409);
+  if (transitionStatus[currStatus].includes(newStatus)) {
+    updatePayload.status = newStatus;
+  } else {
+    throw new AppError(
+      `Cannot change status from ${currStatus} to ${newStatus}`,
+      409,
+    );
+  }
+  if (newStatus === "IN_TRANSIT") {
+    updatePayload.pickedUpAt = new Date();
+  }
+  if (newStatus === "DELIVERED") {
+    updatePayload.deliveredAt = new Date();
   }
   try {
     return await prisma.load.update({
